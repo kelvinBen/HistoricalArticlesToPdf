@@ -1,0 +1,9 @@
+[MySQL]
+host = localhost
+port = 3306
+db_name=
+user = 
+password = 
+
+[SQLite]
+db_out_dir = 

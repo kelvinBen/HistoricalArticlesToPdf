@@ -1,0 +1,6 @@
+click
+request
+psutil
+pdfkit
+DBUtils
+PyMySQL
