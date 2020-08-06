@@ -1,8 +1,15 @@
-import pdfkit
-import threading
+# -*- coding: utf-8 -*-
+# Author: kelvinBen
+# Github: https://github.com/kelvinBen/HistoricalArticlesToPdf
+
 import os
 import time
 import random
+import pdfkit
+import logging
+import threading
+
+log = logging.getLogger(__name__) 
 
 class HtmlToPdfThreads(threading.Thread):
 
@@ -18,24 +25,18 @@ class HtmlToPdfThreads(threading.Thread):
             try:
                 if self.task_queue.empty():
                     self.stop_flag = True
-                    print("=== task kill ===")
+                    log.info("task kill")
                     break
 
                 task = self.task_queue.get(timeout=20)
                 html_path = task.get("html")
-                print(html_path)
                 pdf_path = task.get("pdf")
-                print(pdf_path)
-            
                 self.__html_to_pdf__(html_path,pdf_path)
-
-                
             except Exception as e:
-                print(e)
+                log.error(e)
                 continue
                 
                 
-
     def __html_to_pdf__(self,html_path,pdf_path):
         """设置输出pdf的格式"""
         # options = {
@@ -58,7 +59,6 @@ class HtmlToPdfThreads(threading.Thread):
         configuration={
 
         }
-        print(html_path,pdf_path)
         pdfkit.from_url(html_path, pdf_path)
         
 

@@ -1,3 +1,7 @@
+# -*- coding: utf-8 -*-
+# Author: kelvinBen
+# Github: https://github.com/kelvinBen/HistoricalArticlesToPdf
+
 from PIL import Image
 
 class QrcodeTools(object):
