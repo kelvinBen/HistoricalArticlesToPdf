@@ -316,7 +316,7 @@ class DataPool():
             @param link: 文章链接
             @param digest: 文章描述
         '''
-        wechat_list = '''CREATE TABLE "wechat_list"("id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,"wi_id" INTEGER(11),"title" TEXT,"link" TEXT,"digest" TEXT,"num" INTEGER(11));'''
+        wechat_list = '''CREATE TABLE "wechat_list"("id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,"wi_id" INTEGER(11),"title" TEXT,"link" TEXT,"digest" TEXT,"num" INTEGER(11),"add_time" DATE,"update_time" DATE);'''
 
         '''
             @summary: 用于登录的信息表

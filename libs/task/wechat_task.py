@@ -33,8 +33,8 @@ class WechatTask(object):
 
     thread_list =[]
     img_path_dict = {}
-    wz_list = []
-    wz_dict = {}
+
+    diz_list =[]
 
     def __init__(self,user_name, password, cookie, name, website_url,threads,out_path):
         self.user_name = user_name
@@ -47,16 +47,17 @@ class WechatTask(object):
         self.out_path = out_path
         
     def start(self):
+        self.__start_data__ = str(time.time).replace(".","")
+
         self.__create_dir__()
     
         self.__load_cookies__()
-        # self.__start_login__()
 
         self.__start_threads__()
         
         for thread in self.thread_list:
             thread.join()
-        # self.__print__()
+        self.__print__()
 
         self.__delete_file__()
 
@@ -101,7 +102,6 @@ class WechatTask(object):
         session,result = self.__http_request__(url=self.start_login_url,data=self.__data__(data),wait=1)
         
         if result:
-            # self.__serialization_cookies__(session)
             self.getqrcode(session)
                 
     def getqrcode(self,session):
@@ -110,8 +110,13 @@ class WechatTask(object):
         qrcode_path = os.path.join(self.out_qrcode_path,time_str + ".png")
         self.__http_io_request__(url=new_getqrcode_url,session=session,path=qrcode_path)
         log.warn("请使用微信扫描弹出的二维码图片用于登录微信公众号!")
-        image = Image.open(qrcode_path)
-        image.show()
+        try:
+            image = Image.open(qrcode_path)
+            image.show()
+        except Exception as e:
+            log.error(e)
+            raise Exception("获取二维码失败，请重试!")
+        
         self.getqrcodeStatus(session)   
 
     def getqrcodeStatus(self,session,t=6):
@@ -131,14 +136,11 @@ class WechatTask(object):
             if t == 6:
                 t = 7
             else:
-                t = 6
-            # time.sleep(t)
-            
+                t = 6            
             
     def login(self,session):
         data = {"lang":"zh_CN"}
         session,result = self.__http_request__(url=self.login_url,data=self.__data__(data))
-        print(session.cookies)
         if not result:
             return
 
@@ -155,6 +157,7 @@ class WechatTask(object):
         self.__save_cookie__(session,token)
         for name in names:
             self.search_biz(session,token,name)
+
 
     # 搜索公众号
     def search_biz(self,session,token,name,no=1,begin=0,count=5,total=0):
@@ -184,26 +187,32 @@ class WechatTask(object):
             fakeid = biz.get("fakeid")
             nickname = biz.get("nickname")
             alias = biz.get("alias")
-            if nickname == name:
-                wi_id = WechatSql.insert_info(fakeid,alias,nickname)
-                out_dir = os.path.join(self.out_path , name)
-                if not os.path.exists(out_dir):
-                    os.makedirs(out_dir)
+            if nickname != name:
+                continue
+            wi_id = WechatSql.insert_info(fakeid,alias,nickname)
+            out_dir = os.path.join(self.out_path , nickname)
+            if not os.path.exists(out_dir):
+                os.makedirs(out_dir)
+            begin = WechatSql.select_list_num(wi_id)
+            app_msg_cnt = self.list_ex(session,fakeid,token,out_dir,wi_id)
+            diz_dict ={}
+            if app_msg_cnt != 0:
+                diz_dict["wi_id"] = wi_id
+                diz_dict["name"] = name
+                diz_dict["total"] = app_msg_cnt
+                diz_dict["current"] = str(app_msg_cnt - begin)
+                diz_dict["html"] = os.path.join(out_dir,"html")
+                diz_dict["pdf"] = os.path.join(out_dir,"pdf")
+                self.diz_list.append(diz_dict)
+            return
 
-                begin = WechatSql.select_list_num(wi_id) # 获取最新的公众号列表,50
-                print("----",str(begin))
-
-                self.list_ex(session,fakeid,token,out_dir,wi_id,no=begin,begin=begin)
-                return
-
-                # {"base_resp":{"ret":0,"err_msg":"ok"},"list":[],"total":0}
         begin = count + begin
         if no <= biz_total:
             self.search_biz(session,token,name,no,begin,count,biz_total)
+
     
-    # 获取历史文章列表
-    def list_ex(self,session,fakeid,token,out_dir,wi_id,no=1,begin=0,count=5,app_msg_cnt=0):
-        data = {
+    def list_ex(self,session,fakeid,token,out_dir,wi_id,no=0,begin=0,count=5,app_msg_cnt=0):
+        data ={
             "action":"list_ex",
             "begin":str(begin),
             "count":str(count),
@@ -215,44 +224,45 @@ class WechatTask(object):
             "f":"json",
             "ajax":"1"
         }
+        if begin < 0: # 防止出现负数的情况
+            return app_msg_cnt
 
+        if app_msg_cnt == 0: # 获取文章总数量
+            session,result = self.__http_request__(method='get',url=self.appmsg_url,data=data,session=session)
+            if not result:
+                return app_msg_cnt
+            app_msg_cnt = result.get("app_msg_cnt")
+
+            nums = str(app_msg_cnt/10).split(".")
+            if int(nums[1]) >= 5:
+                start = app_msg_cnt - int(nums[1]) + 5
+            else:
+                start = app_msg_cnt - int(nums[1]) 
+            self.list_ex(session,fakeid,token,out_dir,wi_id,begin=start, app_msg_cnt = app_msg_cnt) # 设置文章起始编号和文章总数量
+            return app_msg_cnt
+        
         session,result = self.__http_request__(method='get',url=self.appmsg_url,data=data,session=session)
         if not result:
-            return
-        # self.__serialization_cookies__(session)
-
+            return app_msg_cnt
         app_msg_cnt = result.get("app_msg_cnt")
         app_msg_list = result.get("app_msg_list")
         if len(app_msg_list) == 0:
-            return
-        num =  app_msg_cnt - begin # 得到初始文章数量
-        nums = str(num/10).split(".")
-        if int(nums[1]) >= 5:
-            start = num - int(nums[1]) + 5
-        else:
-            start = num - int(nums[1]) 
-        print( start) 
-        for app in app_msg_list:
+            return app_msg_cnt
+        
+        for app in list(reversed(app_msg_list)): 
             link = app.get("link")
             title = app.get("title")
             digest = app.get("digest")
             title_list = WechatSql.select_list_title(wi_id,begin)
             if title in title_list:
                 continue
-            WechatSql.insert_list(wi_id,no,title,link,digest)
+            i_date = str(time.time).replace(".","")
+            WechatSql.insert_list(wi_id,no,title,link,digest,i_date)
             self.__get_article_details__(no,title,link,out_dir)
             no = no + 1
-        begin = count + begin
-        if no <= app_msg_cnt:
-            self.list_ex(session,fakeid,token,out_dir,wi_id,no,start,count,app_msg_cnt)
-        else:
-            return
-    
-    # 获取到文章总数量
-    # 得到库里面的文章数量
-    # 新增的 =  总数 - 库里面的
-    # 用新增的作为起始数据
-    
+        begin = begin - count
+        self.list_ex(session,fakeid,token,out_dir,wi_id,no,begin,count,app_msg_cnt) 
+        
     def __get_article_details__(self,no,title,link,out_dir):
         filters = {'/','\\','?','*',':','"','<','>','|',' ','？','（','）','！','，','“',"”"}
         for filter in filters:
@@ -261,7 +271,6 @@ class WechatTask(object):
         html_path = os.path.join(out_dir,"html")
         pdf_path = os.path.join(out_dir,"pdf")
         image_path = os.path.join(html_path,"image") 
-
         if not os.path.exists(image_path):       
             os.makedirs(image_path)
 
@@ -270,7 +279,6 @@ class WechatTask(object):
 
         html_file = os.path.join(html_path,str(no)+ "-" +title+".html")
         pdf_file = os.path.join(pdf_path,str(no)+ "-" +title+".pdf")
-        print(html_file)
         if os.path.exists(pdf_file): # PDF文件存在则不生成对应的PDF文件，否则继续
             return
 
@@ -298,10 +306,8 @@ class WechatTask(object):
             if not (img_url.startswith("http://") or img_url.startswith("https://")):
                 continue
 
-            print(img_url)
             img_url_compile = re.compile("wx_fmt=(.*)?")
             img = img_url_compile.findall(img_url)
-            print(img)
             suffix = ".png"
             if len(img)>0:
                 suffix = "."+ str(img[0])
@@ -322,7 +328,7 @@ class WechatTask(object):
             resp = session.post(url=url,data=data,headers=self.__head__(headers),stream=stream)
 
         if resp.status_code == 200:
-            with open(path, 'wb') as f:  
+            with open(path, 'wb+') as f:  
                 for chunk in resp.iter_content(chunk_size=1024):  
                     if chunk:
                         f.write(chunk)  
@@ -338,7 +344,7 @@ class WechatTask(object):
             resp = session.get(url = url, params = data, headers = self.__head__(headers))
         else:
             resp = session.post(url = url, data = data, headers = self.__head__(headers))
-
+    
         if resp.status_code != 200:
             log.error("网络异常或者错误:"+str(resp.status_code))
             return session,None
@@ -351,7 +357,7 @@ class WechatTask(object):
         resp_json = resp.json()
         if not resp_json:
             return session,None
-        
+        log.debug(resp_json)
         base_resp = resp_json.get("base_resp")
         if base_resp:
             ret = base_resp.get("ret") 
@@ -367,10 +373,20 @@ class WechatTask(object):
         
 
     def __print__(self):
+        change = 0
+        current = 0
+        for diz in self.diz_list:
+            titles = WechatSql.select_list_to_diz(diz['wi_id'],self.__start_data__)
+            for title in titles:
+                if os.path.exists(os.path.join(diz["pdf"],title+".pdf")):
+                    change = change + 1
+                if os.path.exists(os.path.join(diz["html"],title+".html")):
+                    current = current + 1 
 
-
-        print("本次共计导出"+ 10 + "篇文章，成功转换"+20+"篇")
-        print("公众号：" + 10 + "导出"+0+"篇文章，转换")
+            print(("公众号: %s ，共计 %s 篇文章" %(diz["name"],diz["total"])))
+            print(("==> 本次共计获取 %s 篇文章，成功将 %s 篇文章转换为PDF文件。")%(str(current),str(change)))
+            print(("==> PDF文件输出目录为: %s")%(diz["pdf"]))
+            print(("==> HTML文件输出目录为: %s")%(diz["html"]))
 
     def __delete_file__(self):
         if os.path.exists(self.out_qrcode_path):

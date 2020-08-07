@@ -12,6 +12,16 @@ log = logging.getLogger(__name__)
 
 @click.group(help="")
 def cli():
+    str ="""
+ _    _ _     _        _           _               _   _      _        _______     _____  _____  ______ 
+| |  | (_)   | |      (_)         | |   /\        | | (_)    | |      |__   __|   |  __ \|  __ \|  ____|
+| |__| |_ ___| |_ ___  _  ___ __ _| |  /  \   _ __| |_ _  ___| | ___  ___| |  ___ | |__) | |  | | |__   
+|  __  | / __| __/ _ \| |/ __/ _` | | / /\ \ | '__| __| |/ __| |/ _ \/ __| | / _ \|  ___/| |  | |  __|  
+| |  | | \__ \ || (_) | | (_| (_| | |/ ____ \| |  | |_| | (__| |  __/\__ \ || (_) | |    | |__| | |   
+|_|  |_|_|___/\__\___/|_|\___\__,_|_/_/    \_\_|   \__|_|\___|_|\___||___/_| \___/|_|    |_____/|_| 
+                                                By:https://github.com/kelvinBen/HistoricalArticlesToPdf
+"""
+    click.echo(str)
     pass
 
 # 微信公众号/微信
@@ -27,9 +37,9 @@ def wechat(user_name: str, password: str, cookie: str, name: str, website_url: s
     try:
         # 初始化全局对象
         bootstrapper = Bootstrapper(__file__,out_path)
-        bootstrapper.init()
+        out_dir = bootstrapper.init("wechat")
         
-        task = WechatTask(user_name, password, cookie,name,website_url,threads,out_path)
+        task = WechatTask(user_name, password, cookie,name,website_url,threads,out_dir)
         task.start()
     except Exception as e:
         raise e
