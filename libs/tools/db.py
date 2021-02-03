@@ -1,5 +1,7 @@
-#!/usr/bin/python
-#-*- coding: UTF-8 -*-
+# -*- coding: utf-8 -*-
+# Author: kelvinBen
+# Github: https://github.com/kelvinBen/HistoricalArticlesToPdf
+
 import os
 import sqlite3
 import pymysql
@@ -38,7 +40,6 @@ class DataPool():
 
     # 初始化构造函数，默认使用mysql的配置信息
     def __init__(self, conf_name=None, dbName=None, db_out_dir=None):
-
         self.conf_name = conf_name
         # 获取配置文件中的配置信息
         if conf_name is None:
@@ -300,24 +301,37 @@ class DataPool():
     def __create_sqlite_tables__(self):
         '''
             @summary: 微信公众号信息表
-            @param id: 唯一自增id值
+            @param id: 唯一自增ID值
             @param fakeid: 公众号的id
             @param alias: 公众号的微信号
             @param nickname: 公众号名称
         '''
-        wechat_info =  '''CREATE TABLE "wechat_info"("id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,"fakeid" TEXT,"alias" TEXT,"nickname" TEXT)'''
+        wechat_info =  '''CREATE TABLE "wechat_info"("id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,"fakeid" TEXT,"alias" TEXT,"nickname" TEXT);'''
                 
         '''
             @summary: 微信公众号文章列表
-            @param id: 唯一自增id值
+            @param id: 唯一自增ID值
             @param wechat_info_id: 公众号信息的自增id
             @param title: 文章标题
             @param link: 文章链接
             @param digest: 文章描述
         '''
-        wechat_list = '''CREATE TABLE "wechat_list"("id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,"wi_id" INTEGER(11),"title" TEXT,"link" TEXT,"digest" TEXT,"num" INTEGER(11))'''
+        wechat_list = '''CREATE TABLE "wechat_list"("id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,"wi_id" INTEGER(11),"title" TEXT,"link" TEXT,"digest" TEXT,"num" INTEGER(11),"add_time" DATE,"update_time" DATE);'''
+
+        '''
+            @summary: 用于登录的信息表
+            @param id: 唯一自增ID值
+            @param uname: 用于登录的用户名
+            @param upass: 用于登录的密码
+            @param token: 用于登录的token
+            @param cookie: 用于登录的cookie
+            @param type: 登录类型
+        '''
+        user_info =  '''CREATE TABLE "user_info"("id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,"uname" TEXT,"upass" TEXT,"token" TEXT,"cookie" TEXT,"flag" INTEGER(2));'''
+
         self.create_tables(wechat_info)
         self.create_tables(wechat_list)
+        self.create_tables(user_info)
     
     def __close__(self,cursor,conn):
         if cursor: 
